@@ -4,9 +4,9 @@
 import csv
 import codecs
 import re
+import argparse
 from prettytable import PrettyTable
 
-report08 = '/Users/slavikos/Downloads/CSV_2015-06-02-130003.csv'
 
 report08_schools = {}
 report08_employees = {}
@@ -20,8 +20,8 @@ def csv_unireader(f, encoding="utf-8"):
         yield [e.decode("utf-8") for e in row]
 
 
-def parseReport08():
-    with open(report08, 'rb') as report08_csvfile:
+def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.csv'):
+    with open(reportPath, 'rb') as report08_csvfile:
         spamreader = csv_unireader(report08_csvfile, encoding='cp1253')
         firstRow = True
         for row in spamreader:
@@ -114,6 +114,12 @@ def processSchool(id):
 
     return result
 
+def printSchoolHeader(schoolObj):
+    print ""
+    print "::::::"
+    print ":: %s - (%s) ::" % (schoolObj['title'], schoolObj['id'])
+    print "::::::"
+    print ""
 
 def printTabularResults(result):
 
@@ -140,8 +146,25 @@ def printTabularResults(result):
 
 if __name__ == '__main__':
 
-    parseReport08()
+    parser = argparse.ArgumentParser()
 
-    result = processSchool(id='1704010')
-    printTabularResults(result)
+    parser.add_argument('-r8', "--report8", required=True, type=str)
+    parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
+    args = parser.parse_args()
+
+    # parse report 08
+    parseReport08(reportPath=args.report8)
+
+    if args.schoolId:
+        schoolObj = report08_schools[args.schoolId]
+        printSchoolHeader(schoolObj)
+        result = processSchool(id=args.schoolId)
+        printTabularResults(result)
+        exit()
+
+    for school in report08_schools:
+        schoolObj = report08_schools[school]
+        printSchoolHeader(schoolObj)
+        result = processSchool(id=school)
+        printTabularResults(result)
 
