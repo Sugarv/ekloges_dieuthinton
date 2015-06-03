@@ -75,12 +75,15 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
 
 
             # fetch employee from cache
-            employeeObj = report08_employees.get(row[16], None)
+            employeeAfm = filterAFM(row[16])
+
+            employeeObj = report08_employees.get(employeeAfm, None)
+
             if not employeeObj:
                 # first time we see that employee
                 employeeObj = {
                     'id': row[15] if row[15] else '',
-                    'afm': filterAFM(row[16]),
+                    'afm': employeeAfm,
                     'name': row[18],
                     'surname': row[19],
                     'fatherName': row[20],
