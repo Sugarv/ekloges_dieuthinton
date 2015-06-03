@@ -150,7 +150,7 @@ def processSchool(id):
                 }
             )
 
-    return result
+    return sorted(result, key=lambda employee: employee['employee']['surname'])
 
 def printSchoolHeader(schoolObj):
     print ""
