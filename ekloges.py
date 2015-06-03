@@ -100,11 +100,11 @@ def processSchool(id):
                 # same hours ... need more logic
                 pass
 
-        if selectedAssigment['schoolId'] == id:
-            # selected assigment is this school
-            # so this is good
-
-            # update
+        # we've checked all assignments and we have the selected assignment
+        # in the selectedAssigment variable. Check if the assignment references
+        # the current school and the hours attribute is > 0
+        if selectedAssigment['schoolId'] == id and selectedAssigment['hours'] > 0:
+            # woooo! we have a winner !
             result.append(
                 {
                     'employee': employee,
@@ -133,6 +133,7 @@ def printTabularResults(result):
     x.align[u"ΤΟΠΟΘΕΤΗΣΗ ΣΤΗΝ ΜΟΝΑΔΑ"] = "r"
     x.align[u"ΩΡΑΡΙΟ"] = "r"
     x.align[u"ΑΝΑΘΕΣΕΙΣ"] = "r"
+
     counter = 1
     for r in result:
         e = r['employee']
