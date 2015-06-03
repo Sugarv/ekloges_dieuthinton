@@ -88,7 +88,7 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                     'assigments': list()
                 }
                 # add the employee in the dict
-                report08_employees[employeeObj.get('id')] = employeeObj
+                report08_employees[employeeObj.get('afm')] = employeeObj
                 # add to the school as dict as well
                 schoolObj['employees'].append(employeeObj)
 
