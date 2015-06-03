@@ -109,7 +109,7 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             # report08_school_employees[schoolObj['id']].append(assigmentObj)
 
 
-def processSchool(id):
+def processSchool(id, filter0=False):
     # find all employees in school
 
     schoolObj = report08_schools.get(id, None)
@@ -142,6 +142,12 @@ def processSchool(id):
         # in the selectedAssigment variable. Check if the assignment references
         # the current school and the hours attribute is > 0
         if selectedAssigment['schoolId'] == id and selectedAssigment['hours'] > 0:
+
+            if filter0 and selectedAssigment['teachingHours'] == 0:
+                # we've been asked to filter out employees with assignments
+                # in the current school but without teaching hours
+                continue
+
             # woooo! we have a winner !
             result.append(
                 {
@@ -190,6 +196,7 @@ if __name__ == '__main__':
     parser.add_argument('-r8', "--report8", help="path to myschool report 8", required=True, type=str)
     parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
+    parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     args = parser.parse_args()
 
     # parse report 08 as it is mandatory !
@@ -203,13 +210,13 @@ if __name__ == '__main__':
     if args.schoolId:
         schoolObj = report08_schools[args.schoolId]
         printSchoolHeader(schoolObj)
-        result = processSchool(id=args.schoolId)
+        result = processSchool(id=args.schoolId, filter0=args.filter0)
         printTabularResults(result)
         exit()
 
     for school in report08_schools:
         schoolObj = report08_schools[school]
         printSchoolHeader(schoolObj)
-        result = processSchool(id=school)
+        result = processSchool(id=school, filter0=args.filter0)
         printTabularResults(result)
 
