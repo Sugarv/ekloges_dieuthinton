@@ -84,8 +84,8 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 employeeObj = {
                     'id': row[15] if row[15] else '',
                     'afm': employeeAfm,
-                    'name': row[18],
-                    'surname': row[19],
+                    'name': row[19],
+                    'surname': row[18],
                     'fatherName': row[20],
                     'specialization': row[28],
                     'assigments': list()
