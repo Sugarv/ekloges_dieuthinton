@@ -12,6 +12,11 @@ report08_schools = {}
 report08_employees = {}
 report08_school_employees = {}
 
+
+report16_employee = None
+
+
+
 def filterAFM(rawAFM):
     return re.search('=\"(\d*)\"', rawAFM).group(1)
 
@@ -19,6 +24,29 @@ def csv_unireader(f, encoding="utf-8"):
     for row in csv.reader(codecs.iterencode(codecs.iterdecode(f, encoding), "utf-8"), delimiter=';', quotechar='"'):
         yield [e.decode("utf-8") for e in row]
 
+def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.csv'):
+    """
+    Parse report 16 (Κατάλογος Εκπαιδευτικών που Απουσιάζουν από Σχολικές Μονάδες)
+    :param reportPath:
+    :return:
+    """
+
+    result = {}
+
+    with open(reportPath, 'rb') as report_csvfile:
+        reader = csv_unireader(report_csvfile, encoding='cp1253')
+        firstRow = True
+        for row in reader:
+
+            if firstRow:
+                # first row contains
+                firstRow = False
+                continue
+
+            # note that employee with employeeAfm is missing from school schoolId
+            result[filterAFM(row[12])] = row[6]
+
+    return result
 
 def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.csv'):
     with open(reportPath, 'rb') as report08_csvfile:
@@ -84,6 +112,13 @@ def processSchool(id):
     schoolObj = report08_schools.get(id, None)
     result = list()
     for employee in schoolObj.get('employees', list()):
+
+        # check if we have report16 data available
+        if report16_employee and report16_employee.get(employee['afm']) == schoolObj['id']:
+            # report 16 is available, check if the employee is excluded and the employee
+            # has been reported missing in the school, so ignore
+            continue
+
         selectedAssigment = None
 
         for assigment in employee['assigments']:
@@ -149,12 +184,18 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-r8', "--report8", required=True, type=str)
+    parser.add_argument('-r8', "--report8", help="path to myschool report 8", required=True, type=str)
+    parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     args = parser.parse_args()
 
-    # parse report 08
+    # parse report 08 as it is mandatory !
     parseReport08(reportPath=args.report8)
+
+    if args.report16:
+
+        # path to report 16 has been specified, so parse!
+        report16_employee = parseReport16(reportPath=args.report16)
 
     if args.schoolId:
         schoolObj = report08_schools[args.schoolId]
