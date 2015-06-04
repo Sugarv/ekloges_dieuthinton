@@ -14,7 +14,7 @@ report08_school_employees = {}
 
 
 report16_employee = None
-
+report16_absents = {}
 
 
 def filterAFM(rawAFM):
@@ -31,6 +31,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
     :return:
     """
 
+    report16_absence_reasons = [u'ΜΑΚΡΟΧΡΟΝΙΑ ΑΔΕΙΑ (>10 ημέρες)',u'ΑΠΟΣΠΑΣΗ ΣΤΟ ΕΞΩΤΕΡΙΚΟ']
     result = {}
 
     with open(reportPath, 'rb') as report_csvfile:
@@ -45,6 +46,9 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
 
             # note that employee with employeeAfm is missing from school schoolId
             result[filterAFM(row[12])] = row[6]
+	    # check if generally absent (in case of multiple assignments) and insert in report16_absents
+	    if row[24] in report16_absence_reasons:
+		report16_absents[filterAFM(row[12])] = row[24]
 
     return result
 
@@ -126,6 +130,11 @@ def processSchool(id, filter0=False):
             # report 16 is available, check if the employee is excluded and the employee
             # has been reported missing in the school, so ignore
             continue
+
+	if report16_absents and employee['afm'] in report16_absents:
+	    # exclude report16_absents from all schools (if they have more than one assignments)
+	    continue
+
 
         primaryAssignemtns = [ u'Από Διάθεση ΠΥΣΠΕ/ΠΥΣΔΕ', u'Απόσπαση (με αίτηση - κύριος φορέας)', u'Οργανικά', u'Οργανικά από Άρση Υπεραριθμίας' ]
 
