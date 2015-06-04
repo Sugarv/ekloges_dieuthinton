@@ -127,6 +127,8 @@ def processSchool(id, filter0=False):
             # has been reported missing in the school, so ignore
             continue
 
+        primaryAssignemtns = [ u'Από Διάθεση ΠΥΣΠΕ/ΠΥΣΔΕ', u'Απόσπαση (με αίτηση - κύριος φορέας)', u'Οργανικά', u'Οργανικά από Άρση Υπεραριθμίας' ]
+
         selectedAssigment = None
 
         for assigment in employee['assigments']:
@@ -141,8 +143,10 @@ def processSchool(id, filter0=False):
                 selectedAssigment = assigment
             elif assigment['hours'] == selectedAssigment['hours']:
                 # deal with same hour assignments
-		if assigment['type'] == u'Μερική Διάθεση (Συμπλήρωση Ωραρίου)':
-		    pass
+                # selected assigment will be accepted if the type is a primary assignment
+                if assigment['type'] in primaryAssignemtns:
+                    selectedAssigment = assigment
+
 		else:
 		    selectedAssigment = assigment
 
