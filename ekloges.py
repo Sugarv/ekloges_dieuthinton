@@ -34,7 +34,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
     result = {}
 
     with open(reportPath, 'rb') as report_csvfile:
-        reader = csv_unireader(report_csvfile, encoding='cp1253')
+        reader = csv_unireader(report_csvfile, encoding='iso8859-7')
         firstRow = True
         for row in reader:
 
@@ -50,7 +50,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
 
 def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.csv'):
     with open(reportPath, 'rb') as report08_csvfile:
-        spamreader = csv_unireader(report08_csvfile, encoding='cp1253')
+        spamreader = csv_unireader(report08_csvfile, encoding='iso8859-7')
         firstRow = True
         for row in spamreader:
 
