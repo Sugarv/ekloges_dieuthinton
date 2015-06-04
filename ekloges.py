@@ -105,7 +105,9 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             }
 
             employeeObj['assigments'].append(assigmentObj)
-
+	    # only 'new' employees were added to school. The following line adds 'old' ones too
+	    if employeeObj not in schoolObj['employees']:
+              schoolObj['employees'].append(employeeObj)
             # report08_school_employees[schoolObj['id']].append(assigmentObj)
 
 
@@ -135,8 +137,11 @@ def processSchool(id, filter0=False):
                 # new assigment
                 selectedAssigment = assigment
             elif assigment['hours'] == selectedAssigment['hours']:
-                # same hours ... need more logic
-                pass
+                # deal with same hour assignments
+		if assigment['type'] == u'Μερική Διάθεση (Συμπλήρωση Ωραρίου)':
+		    pass
+		else:
+		    selectedAssigment = assigment
 
         # we've checked all assignments and we have the selected assignment
         # in the selectedAssigment variable. Check if the assignment references
