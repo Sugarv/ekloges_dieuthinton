@@ -15,6 +15,11 @@ report08_school_employees = {}
 
 report16_employee = None
 
+# we will store employee school exclusion in the employee_school_exclusions dict
+# format: key -> employee afm
+
+employee_school_exclusions = {}
+
 
 
 def filterAFM(rawAFM):
@@ -44,7 +49,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
                 continue
 
             # note that employee with employeeAfm is missing from school schoolId
-            result[filterAFM(row[12])] = row[6]
+            result[filterAFM(row[12])] = { "schoolId": row[6], "reason": "%s (%s)" % (row[22], row[23]) }
 
     return result
 
@@ -114,17 +119,48 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             # report08_school_employees[schoolObj['id']].append(assigmentObj)
 
 
+def isExcluded(employeeAfm, schoolId):
+    """
+    Determines if an employee is excluded from school unit id. The operation will
+    return None if the employee is not excluded or a description if the employee
+    should be excluded
+    :param employeeAfm: The employee's AFM
+    :type employeeAfm: str
+    :param schoolId: The school ID to check for exclusion
+    :type schoolId: str
+    :return: None if the employee is not excluded or a description if the employee should be excluded
+    """
+    if len(employee_school_exclusions) > 0:
+        exclusion = employee_school_exclusions.get(employeeAfm, None)
+        if exclusion:
+            # employee is probably excluded
+            if exclusion.get('schoolId', '') == schoolId:
+                return exclusion.get('reason', "Άγνωστο λόγος εξαιρέσεις")
+            else:
+                return None
+        else:
+            return None
+    else:
+        return None
+
+
 def processSchool(id, filter0=False):
-    # find all employees in school
 
     schoolObj = report08_schools.get(id, None)
-    result = list()
+    acceptedList = list()
+    rejectedList = list()
     for employee in schoolObj.get('employees', list()):
 
-        # check if we have report16 data available
-        if report16_employee and report16_employee.get(employee['afm']) == schoolObj['id']:
-            # report 16 is available, check if the employee is excluded and the employee
-            # has been reported missing in the school, so ignore
+        # check if the employee is in the exclusion list
+        excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
+        if excludedReason:
+            # employee has been excluded
+            rejectedList.append(
+                {
+                    'employee': employee,
+                    'excludedReason': excludedReason,
+                }
+            )
             continue
 
         primaryAssignemtns = [ u'Από Διάθεση ΠΥΣΠΕ/ΠΥΣΔΕ', u'Απόσπαση (με αίτηση - κύριος φορέας)', u'Οργανικά', u'Οργανικά από Άρση Υπεραριθμίας' ]
@@ -158,17 +194,33 @@ def processSchool(id, filter0=False):
             if filter0 and selectedAssigment['teachingHours'] == 0:
                 # we've been asked to filter out employees with assignments
                 # in the current school but without teaching hours
+                rejectedList.append({
+                    'employee': employee,
+                    'excludedReason': u"Αποκλεισμός λόγο μη ανάθεσης διδακτικού έργου στην μονάδα",
+                })
                 continue
 
             # woooo! we have a winner !
-            result.append(
+            acceptedList.append(
                 {
                     'employee': employee,
                     'assigment': selectedAssigment,
                 }
             )
+        else:
+            # ok, employee is rejected
+            rejectedList.append(
+                {
+                    'employee': employee,
+                    'excludedReason': u"Τοποθετημένος για '%s' ώρες στην μονάδα '%s' με σχέση '%s'" % (selectedAssigment['hours'], selectedAssigment['schoolId'], selectedAssigment['type']),
+                }
+            )
 
-    return sorted(result, key=lambda employee: employee['employee']['surname'])
+    return {
+        'accepted': sorted(acceptedList, key=lambda employee: employee['employee']['surname']),
+        'rejected': sorted(rejectedList, key=lambda employee: employee['employee']['surname']),
+    }
+
 
 def printSchoolHeader(schoolObj):
     print ""
@@ -177,7 +229,8 @@ def printSchoolHeader(schoolObj):
     print "::::::"
     print ""
 
-def printTabularResults(result):
+
+def printTabularResults(result, includeRejected=False):
 
     x = PrettyTable(["#","ΑΜ", "ΑΦΜ", u"ΕΠΩΝΥΜΟ", u"ΟΝΟΜΑ", u"ΠΑΤΡΩΝΥΜΟ", u"ΕΙΔΙΚΟΤΗΤΑ", u"ΣΧΕΣΗ ΕΡΓΑΣΙΑΣ", u"ΤΟΠΟΘΕΤΗΣΗ ΣΤΗΝ ΜΟΝΑΔΑ", u"ΩΡΑΡΙΟ", u"ΑΝΑΘΕΣΕΙΣ"])
     x.align[u"#"] = "l"
@@ -191,15 +244,37 @@ def printTabularResults(result):
     x.align[u"ΑΝΑΘΕΣΕΙΣ"] = "r"
 
     counter = 1
-    for r in result:
+    for r in result.get('accepted', list()):
         e = r['employee']
         a = r['assigment']
         x.add_row([counter, e['id'], e['afm'], e['surname'], e['name'], e['fatherName'], e['specialization'], a['type'], a['assigment'], a['hours'], a['teachingHours']])
         counter = counter + 1
 
+    resultString = x.get_string()
 
-    print x
+    if includeRejected:
+        x = PrettyTable(["#","ΑΜ", "ΑΦΜ", u"ΕΠΩΝΥΜΟ", u"ΟΝΟΜΑ", u"ΠΑΤΡΩΝΥΜΟ", u"ΕΙΔΙΚΟΤΗΤΑ", u"ΑΠΟΚΛΕΙΣΜΟΣ ΑΠΟ ΨΗΦΟΦΟΡΙΑ"])
+        x.align[u"#"] = "l"
+        x.align[u"ΕΠΩΝΥΜΟ"] = "r"
+        x.align[u"ΟΝΟΜΑ"] = "r"
+        x.align[u"ΠΑΤΡΩΝΥΜΟ"] = "r"
+        x.align[u"ΕΙΔΙΚΟΤΗΤΑ"] = "r"
+        x.align[u"ΑΠΟΚΛΕΙΣΜΟΣ ΑΠΟ ΨΗΦΟΦΟΡΙΑ"] = "l"
 
+        counter = 1
+        for r in result.get('rejected', list()):
+            e = r['employee']
+            x.add_row([counter, e['id'], e['afm'], e['surname'], e['name'], e['fatherName'], e['specialization'], r['excludedReason'] ])
+            counter = counter + 1
+
+        resultString = resultString + "\n\n"
+        resultString = resultString + u"###############################\n"
+        resultString = resultString + u"##### Λίστα Αποκλεισμένων #####\n"
+        resultString = resultString + u"###############################\n"
+        resultString = resultString + "\n\n"
+        resultString = resultString + x.get_string()
+
+    print resultString
 
 if __name__ == '__main__':
 
@@ -209,26 +284,26 @@ if __name__ == '__main__':
     parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
+    parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
     args = parser.parse_args()
 
     # parse report 08 as it is mandatory !
     parseReport08(reportPath=args.report8)
 
     if args.report16:
-
         # path to report 16 has been specified, so parse!
-        report16_employee = parseReport16(reportPath=args.report16)
+        employee_school_exclusions.update(parseReport16(reportPath=args.report16))
 
     if args.schoolId:
         schoolObj = report08_schools[args.schoolId]
         printSchoolHeader(schoolObj)
         result = processSchool(id=args.schoolId, filter0=args.filter0)
-        printTabularResults(result)
+        printTabularResults(result, includeRejected=args.rejected)
         exit()
 
     for school in report08_schools:
         schoolObj = report08_schools[school]
         printSchoolHeader(schoolObj)
         result = processSchool(id=school, filter0=args.filter0)
-        printTabularResults(result)
+        printTabularResults(result, includeRejected=args.rejected)
 
