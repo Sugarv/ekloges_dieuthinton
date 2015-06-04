@@ -50,6 +50,9 @@ optional arguments:
                         path to myschool report 16
   --schoolId SCHOOLID   generate report for the given school id
   --filter0             filter employees without teaching hour(s)
+  --rejected            print rejected employees in results
+  --outputDir OUTPUTDIR
+                        the base path where output files should be placed
 ```
 
 ## Οδηγίες Χρήσης
@@ -71,7 +74,9 @@ optional arguments:
  εκπαιδευτικούς χωρίς Α' ή Β' ανάθεση. Η λειτουργία αυτή είναι χρήσιμη στις περιπτώσεις που η σχολική μονάδα δεν έχει αναθέσει
  διδακτικό έργο στον εκπαιδευτικό λόγω απουσίας, αλλά *δεν* έχει καταχωρήσει την απαραίτητη απουσία (πονεμένη ιστορία)
 * `--rejected` - αν ορισθεί, τότε η γεννήτρια θα εκπτυπώσει και συμπληρωματικό πίνακα με τους αποκλεισμένους απο την ψηφοφορία μαζί με μια
-σύντομη αιτιολόγηση
+σύντομη αιτιολόγηση.
+* `--outputDir` - ορίζει τον κατάλογο στον οποίον θα αποθηκευτούν τα αποτελέσματα υπο την μορφή αρχείων ανα σχολική μονάδα. Αν δεν ορισθεί
+η συγκεκριμένη παράμετρος, τότε τα αποτελέσματα εκτυπώνονται στο `stdout``
 
 ### Παράδειγμα
 

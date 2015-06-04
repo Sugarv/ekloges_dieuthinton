@@ -5,6 +5,7 @@ import csv
 import codecs
 import re
 import argparse
+import os
 from prettytable import PrettyTable
 
 
@@ -217,20 +218,27 @@ def processSchool(id, filter0=False):
             )
 
     return {
+        'school' : schoolObj,
         'accepted': sorted(acceptedList, key=lambda employee: employee['employee']['surname']),
         'rejected': sorted(rejectedList, key=lambda employee: employee['employee']['surname']),
     }
 
-
-def printSchoolHeader(schoolObj):
-    print ""
-    print "::::::"
-    print ":: %s - (%s) ::" % (schoolObj['title'], schoolObj['id'])
-    print "::::::"
-    print ""
-
+def writeReportToFile(schoolId, resultStr, basePath='/tmp'):
+    filePath = os.path.join(basePath, ("%s.txt" % schoolId))
+    with codecs.open(filePath, mode="w", encoding="utf-8") as textFile:
+        textFile.write(resultStr)
+    return filePath
 
 def printTabularResults(result, includeRejected=False):
+
+    schoolObj = result.get('school', dict())
+
+    resultString = "\n"
+    resultString = resultString + "::::::::::::::::::::::::::::::::::::::::::::::::\n"
+    resultString = resultString + ":: %s - (%s) ::\n" % (schoolObj['title'], schoolObj['id'])
+    resultString = resultString + "::::::::::::::::::::::::::::::::::::::::::::::::\n"
+    resultString = resultString + "\n\n"
+
 
     x = PrettyTable(["#","ΑΜ", "ΑΦΜ", u"ΕΠΩΝΥΜΟ", u"ΟΝΟΜΑ", u"ΠΑΤΡΩΝΥΜΟ", u"ΕΙΔΙΚΟΤΗΤΑ", u"ΣΧΕΣΗ ΕΡΓΑΣΙΑΣ", u"ΤΟΠΟΘΕΤΗΣΗ ΣΤΗΝ ΜΟΝΑΔΑ", u"ΩΡΑΡΙΟ", u"ΑΝΑΘΕΣΕΙΣ"])
     x.align[u"#"] = "l"
@@ -250,7 +258,7 @@ def printTabularResults(result, includeRejected=False):
         x.add_row([counter, e['id'], e['afm'], e['surname'], e['name'], e['fatherName'], e['specialization'], a['type'], a['assigment'], a['hours'], a['teachingHours']])
         counter = counter + 1
 
-    resultString = x.get_string()
+    resultString = resultString + x.get_string()
 
     if includeRejected:
         x = PrettyTable(["#","ΑΜ", "ΑΦΜ", u"ΕΠΩΝΥΜΟ", u"ΟΝΟΜΑ", u"ΠΑΤΡΩΝΥΜΟ", u"ΕΙΔΙΚΟΤΗΤΑ", u"ΑΠΟΚΛΕΙΣΜΟΣ ΑΠΟ ΨΗΦΟΦΟΡΙΑ"])
@@ -274,7 +282,7 @@ def printTabularResults(result, includeRejected=False):
         resultString = resultString + "\n\n"
         resultString = resultString + x.get_string()
 
-    print resultString
+    return resultString
 
 if __name__ == '__main__':
 
@@ -285,6 +293,7 @@ if __name__ == '__main__':
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
+    parser.add_argument('--outputDir', type=str, help='the base path where output files should be placed')
     args = parser.parse_args()
 
     # parse report 08 as it is mandatory !
@@ -296,14 +305,22 @@ if __name__ == '__main__':
 
     if args.schoolId:
         schoolObj = report08_schools[args.schoolId]
-        printSchoolHeader(schoolObj)
         result = processSchool(id=args.schoolId, filter0=args.filter0)
-        printTabularResults(result, includeRejected=args.rejected)
+        r = printTabularResults(result, includeRejected=args.rejected)
+        if args.outputDir:
+            path = writeReportToFile(schoolId=args.schoolId, resultStr=r, basePath=args.outputDir)
+            print "[*] School '%s' (%s) report has been written to file '%s'" % (args.schoolId,schoolObj['title'], path)
+        else:
+            print r
         exit()
 
     for school in report08_schools:
         schoolObj = report08_schools[school]
-        printSchoolHeader(schoolObj)
         result = processSchool(id=school, filter0=args.filter0)
-        printTabularResults(result, includeRejected=args.rejected)
+        r = printTabularResults(result, includeRejected=args.rejected)
+        if args.outputDir:
+            path = writeReportToFile(schoolId=school, resultStr=r, basePath=args.outputDir)
+            print "[*] School '%s' (%s) report has been written to file '%s'" % (school,schoolObj['title'], path)
+        else:
+            print r
 
