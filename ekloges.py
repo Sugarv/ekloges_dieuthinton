@@ -94,6 +94,11 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 report08_employees[employeeObj.get('afm')] = employeeObj
                 # add to the school as dict as well
                 schoolObj['employees'].append(employeeObj)
+            else:
+                # employee exists in the report08_employee dict, so add it
+                # (if he does not exist) in the schools dict as well
+                if employeeObj not in schoolObj['employees']:
+                    schoolObj['employees'].append(employeeObj)
 
             assigmentObj = {
                 'schoolId': schoolObj['id'],
@@ -105,9 +110,7 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             }
 
             employeeObj['assigments'].append(assigmentObj)
-	    # only 'new' employees were added to school. The following line adds 'old' ones too
-	    if employeeObj not in schoolObj['employees']:
-              schoolObj['employees'].append(employeeObj)
+
             # report08_school_employees[schoolObj['id']].append(assigmentObj)
 
 
