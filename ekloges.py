@@ -15,6 +15,7 @@ report08_school_employees = {}
 
 
 report16_employee = None
+# The following (combined with report16_absence_reasons) is used when an employee is absent, has multiple assignments and not all schools have input this absence 
 report16_absents = {}
 
 # we will store employee school exclusion in the employee_school_exclusions dict
@@ -38,7 +39,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
     :return:
     """
 
-    report16_absence_reasons = [u'ΜΑΚΡΟΧΡΟΝΙΑ ΑΔΕΙΑ (>10 ημέρες)',u'ΑΠΟΣΠΑΣΗ ΣΤΟ ΕΞΩΤΕΡΙΚΟ']
+    report16_absence_reasons = [u'ΜΑΚΡΟΧΡΟΝΙΑ ΑΔΕΙΑ (>10 ημέρες)',u'ΑΠΟΣΠΑΣΗ ΣΤΟ ΕΞΩΤΕΡΙΚΟ',u'ΑΠΟΣΠΑΣΗ ΣΕ ΦΟΡΕΑ ΥΠ. ΠΑΙΔΕΙΑΣ',u'ΑΠΟΣΠΑΣΗ ΣΕ ΑΛΛΟ ΠΥΣΠΕ / ΠΥΣΔΕ',u'ΑΠΟΣΠΑΣΗ ΣΕ ΦΟΡΕΑ ΕΚΤΟΣ ΥΠ. ΠΑΙΔΕΙΑΣ',u'ΟΛΙΚΗ ΔΙΑΘΕΣΗ ΣΕ ΑΠΟΚΕΝΤΡΩΜΕΝΕΣ ΥΠΗΡΕΣΙΕΣ ΥΠ. ΠΑΙΔΕΙΑΣ']
     result = {}
 
     with open(reportPath, 'rb') as report_csvfile:
