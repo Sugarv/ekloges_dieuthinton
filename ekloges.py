@@ -54,13 +54,15 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
             # note that employee with employeeAfm is missing from school schoolId
             result[filterAFM(row[12])] = { "schoolId": row[6], "reason": "%s (%s)" % (row[22], row[23]) }
             
-			# check if generally absent (in case of multiple assignments) and insert in report16_absents
-			if row[24] in report16_absence_reasons:
-				report16_absents[filterAFM(row[12])] = row[24]
+	    # check if generally absent (in case of multiple assignments) and insert in report16_absents
+	    if row[24] in report16_absence_reasons:
+		report16_absents[filterAFM(row[12])] = row[24]
 
     return result
 
 def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.csv'):
+    excluded_school_types = [u'Νηπιαγωγεία']
+
     with open(reportPath, 'rb') as report08_csvfile:
         spamreader = csv_unireader(report08_csvfile, encoding='iso8859-7')
         firstRow = True
@@ -69,6 +71,9 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             if firstRow:
                 firstRow = False
                 continue
+	    #exclude some school types
+	    if row[4] in excluded_school_types:
+		continue
 
             # get school object
 
@@ -183,20 +188,22 @@ def processSchool(id, filter0=False):
 
             if not selectedAssigment:
                 selectedAssigment = employee['assigments'][0]
-                continue
+		continue
 
             if assigment['hours'] > selectedAssigment['hours']:
-                # found an assigment with more hours, check the
-                # new assigment
-                selectedAssigment = assigment
+               	# found an assigment with more hours, check the
+               	# new assigment
+               	    selectedAssigment = assigment
+
             elif assigment['hours'] == selectedAssigment['hours']:
-                # deal with same hour assignments
-                # selected assigment will be accepted if the type is a primary assignment
-                if assigment['type'] in primaryAssignemtns:
+               	# deal with same hour assignments
+               	# selected assigment will be accepted if the type is a primary assignment
+               	if assigment['type'] in primaryAssignemtns:
                     selectedAssigment = assigment
 
 		else:
-		    selectedAssigment = assigment
+		    #selectedAssigment = assigment
+		    pass
 
         # we've checked all assignments and we have the selected assignment
         # in the selectedAssigment variable. Check if the assignment references
@@ -224,7 +231,7 @@ def processSchool(id, filter0=False):
             rejectedList.append(
                 {
                     'employee': employee,
-                    'excludedReason': u"Τοποθετημένος για '%s' ώρες στην μονάδα '%s' με σχέση '%s'" % (selectedAssigment['hours'], selectedAssigment['schoolId'], selectedAssigment['type']),
+                    'excludedReason': u"Τοποθετημένος για '%s' ώρες στην μονάδα '%s' με σχέση '%s'(Σχ.Έργ.: '%s')" % (selectedAssigment['hours'], selectedAssigment['schoolId'], selectedAssigment['assigment'], selectedAssigment['type']),
                 }
             )
 
