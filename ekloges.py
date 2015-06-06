@@ -72,9 +72,9 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             if firstRow:
                 firstRow = False
                 continue
-	    #exclude some school types
-	    if row[4] in excluded_school_types:
-		continue
+            #exclude some school types
+            if row[4] in excluded_school_types:
+                continue
 
             # get school object
 
@@ -176,9 +176,29 @@ def processSchool(id, filter0=False):
             )
             continue
 
-	if report16_absents and employee['afm'] in report16_absents:
-	    # exclude report16_absents from all schools (if they have more than one assignments)
-	    continue
+        if report16_absents and employee['afm'] in report16_absents:
+        # exclude report16_absents from all schools (if they have more than one assignments)
+            continue
+
+        # some (in our case pe05, pe07) employees may have multiple secondary assignments with equal, more than the main, hours
+        # if this happens, select and enroll them in their main assignment school (as instructed by the ministry of education)
+        foundAssigment = None
+        mainAssigment = None
+        mainAssigmentHours = None
+        assigmentHours = list()
+        if len(employee['assigments']) > 2:
+            for assigment in employee['assigments']:
+                if assigment['assigment'] == u'Από Διάθεση ΠΥΣΠΕ/ΠΥΣΔΕ':
+                    mainAssigment = assigment
+                    mainAssigmentHours = assigment['hours']
+                    continue
+                else:
+                    assigmentHours.append (assigment['hours'])
+                    continue
+            maxHours = max(assigmentHours)
+            if assigmentHours.count(maxHours)>1:
+                foundAssigment = mainAssigment
+        # end of multi max assignments
 
 
         primaryAssignemtns = [ u'Από Διάθεση ΠΥΣΠΕ/ΠΥΣΔΕ', u'Απόσπαση (με αίτηση - κύριος φορέας)', u'Οργανικά', u'Οργανικά από Άρση Υπεραριθμίας' ]
@@ -186,10 +206,13 @@ def processSchool(id, filter0=False):
         selectedAssigment = None
 
         for assigment in employee['assigments']:
+            if foundAssigment:
+                selectedAssigment = foundAssigment
+                break
 
             if not selectedAssigment:
                 selectedAssigment = employee['assigments'][0]
-		continue
+                continue
 
             if assigment['hours'] > selectedAssigment['hours']:
                	# found an assigment with more hours, check the
@@ -199,12 +222,11 @@ def processSchool(id, filter0=False):
             elif assigment['hours'] == selectedAssigment['hours']:
                	# deal with same hour assignments
                	# selected assigment will be accepted if the type is a primary assignment
-               	if assigment['type'] in primaryAssignemtns:
+               	if assigment['assigment'] in primaryAssignemtns:
                     selectedAssigment = assigment
 
-		else:
-		    #selectedAssigment = assigment
-		    pass
+                else:
+                    pass
 
         # we've checked all assignments and we have the selected assignment
         # in the selectedAssigment variable. Check if the assignment references
@@ -229,10 +251,11 @@ def processSchool(id, filter0=False):
             )
         else:
             # ok, employee is rejected
+            schName = report08_schools.get(selectedAssigment['schoolId'], None)['title']
             rejectedList.append(
                 {
                     'employee': employee,
-                    'excludedReason': u"Τοποθετημένος για '%s' ώρες στην μονάδα '%s' με σχέση '%s'(Σχ.Έργ.: '%s')" % (selectedAssigment['hours'], selectedAssigment['schoolId'], selectedAssigment['assigment'], selectedAssigment['type']),
+                    'excludedReason': u"Τοποθετημένος για '%s' ώρες στην μονάδα '%s' (%s)\n με σχέση '%s'(Σχ.Έργ.: '%s')" % (selectedAssigment['hours'], selectedAssigment['schoolId'], schName, selectedAssigment['assigment'], selectedAssigment['type']),
                 }
             )
 
@@ -247,6 +270,15 @@ def writeReportToFile(schoolId, resultStr, basePath='/tmp'):
     with codecs.open(filePath, mode="w", encoding="utf-8") as textFile:
         textFile.write(resultStr)
     return filePath
+
+def replace_all(text, dic):
+    for i, j in dic.iteritems():
+        text = text.replace(i, j)
+    return text
+    
+def shortenTitle(schName):
+    shortenDic = {u'ΟΛΟΗΜΕΡΟ' : u'ΟΛ', u'ΔΗΜΟΤΙΚΟ' : u'Δ.', u'ΣΧΟΛΕΙΟ' : u'Σ.', u'/' : ''}
+    return replace_all(schName, shortenDic)
 
 def printTabularResults(result, includeRejected=False):
 
@@ -313,6 +345,7 @@ if __name__ == '__main__':
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
     parser.add_argument('--outputDir', type=str, help='the base path where output files should be placed')
+    parser.add_argument('--titleFiles', action='store_true', default=False, help='output school titles as filenames')
     args = parser.parse_args()
 
     # parse report 08 as it is mandatory !
@@ -327,7 +360,10 @@ if __name__ == '__main__':
         result = processSchool(id=args.schoolId, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            path = writeReportToFile(schoolId=args.schoolId, resultStr=r, basePath=args.outputDir)
+            if args.titleFiles:
+                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
+            else:
+                path = writeReportToFile(schoolId=args.schoolId, resultStr=r, basePath=args.outputDir)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (args.schoolId,schoolObj['title'], path)
         else:
             print r
@@ -338,7 +374,10 @@ if __name__ == '__main__':
         result = processSchool(id=school, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            path = writeReportToFile(schoolId=school, resultStr=r, basePath=args.outputDir)
+            if args.titleFiles:
+                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
+            else:
+                path = writeReportToFile(schoolId=school, resultStr=r, basePath=args.outputDir)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (school,schoolObj['title'], path)
         else:
             print r
