@@ -265,9 +265,9 @@ def processSchool(id, filter0=False):
         'rejected': sorted(rejectedList, key=lambda employee: employee['employee']['surname']),
     }
 
-def writeReportToFile(schoolId, resultStr, basePath='/tmp'):
-    filePath = os.path.join(basePath, ("%s.txt" % schoolId))
-    with codecs.open(filePath, mode="w", encoding="utf-8") as textFile:
+def writeReportToFile(reportName, resultStr, basePath='/tmp', encoding="utf-8"):
+    filePath = os.path.join(basePath, reportName)
+    with codecs.open(filePath, mode="w", encoding=encoding) as textFile:
         textFile.write(resultStr)
     return filePath
 
@@ -360,10 +360,8 @@ if __name__ == '__main__':
         result = processSchool(id=args.schoolId, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            if args.titleFiles:
-                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
-            else:
-                path = writeReportToFile(schoolId=args.schoolId, resultStr=r, basePath=args.outputDir)
+            outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else args.schoolId
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (args.schoolId,schoolObj['title'], path)
         else:
             print r
@@ -374,10 +372,8 @@ if __name__ == '__main__':
         result = processSchool(id=school, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            if args.titleFiles:
-                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
-            else:
-                path = writeReportToFile(schoolId=school, resultStr=r, basePath=args.outputDir)
+            outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else school
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (school,schoolObj['title'], path)
         else:
             print r
