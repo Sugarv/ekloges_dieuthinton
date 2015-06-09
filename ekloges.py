@@ -217,7 +217,7 @@ def processSchool(id, filter0=False):
             if assigment['hours'] > selectedAssigment['hours']:
                	# found an assigment with more hours, check the
                	# new assigment
-               	    selectedAssigment = assigment
+               	selectedAssigment = assigment
 
             elif assigment['hours'] == selectedAssigment['hours']:
                	# deal with same hour assignments
