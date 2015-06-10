@@ -346,6 +346,8 @@ if __name__ == '__main__':
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
     parser.add_argument('--outputDir', type=str, help='the base path where output files should be placed')
     parser.add_argument('--titleFiles', action='store_true', default=False, help='output school titles as filenames')
+    parser.add_argument('--outputEncoding',  default='utf-8', help='set output encdoding')
+
     args = parser.parse_args()
 
     # parse report 08 as it is mandatory !
@@ -361,7 +363,7 @@ if __name__ == '__main__':
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
             outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else args.schoolId
-            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir)
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir, encoding=args.outputEncoding)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (args.schoolId,schoolObj['title'], path)
         else:
             print r
@@ -373,7 +375,7 @@ if __name__ == '__main__':
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
             outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else school
-            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir)
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir, encoding=args.outputEncoding)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (school,schoolObj['title'], path)
         else:
             print r
