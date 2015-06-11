@@ -23,6 +23,9 @@ report16_absents = {}
 
 employee_school_exclusions = {}
 
+# school exclusions
+excluced_schools = list()
+
 
 
 def filterAFM(rawAFM):
@@ -31,6 +34,21 @@ def filterAFM(rawAFM):
 def csv_unireader(f, encoding="utf-8"):
     for row in csv.reader(codecs.iterencode(codecs.iterdecode(f, encoding), "utf-8"), delimiter=';', quotechar='"'):
         yield [e.decode("utf-8") for e in row]
+
+def parseSchoolExclusionList(reportPath):
+    """
+    Parses a CSV which in the first column contains the IDs of all schools that need to be excluded from
+    processing
+    :param reportPath:
+    :return: a list of schools ids to exclude
+    """
+    result = list()
+    with open(reportPath, 'rb') as report_csvfile:
+        reader = csv_unireader(report_csvfile, encoding='iso8859-7')
+        for row in reader:
+            result.append(row[0])
+
+    return result
 
 def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.csv'):
     """
@@ -75,6 +93,12 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             #exclude some school types
             if row[4] in excluded_school_types:
                 continue
+
+            # check if the school id is excluded
+            if row[6] in excluced_schools:
+                continue
+
+
 
             # get school object
 
@@ -162,7 +186,10 @@ def processSchool(id, filter0=False):
     schoolObj = report08_schools.get(id, None)
     acceptedList = list()
     rejectedList = list()
-    for employee in schoolObj.get('employees', list()):
+
+    # fetch school employees, if school is not excluded
+    schoolEmployees = schoolObj.get('employees', list()) if id not in excluced_schools else list()
+    for employee in schoolEmployees:
 
         # check if the employee is in the exclusion list
         excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
@@ -341,6 +368,8 @@ if __name__ == '__main__':
 
     parser.add_argument('-r8', "--report8", help="path to myschool report 8", required=True, type=str)
     parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
+    parser.add_argument('-se', "--schoolExclusion", help="path to school exclusion list", type=str)
+
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
@@ -348,7 +377,12 @@ if __name__ == '__main__':
     parser.add_argument('--titleFiles', action='store_true', default=False, help='output school titles as filenames')
     parser.add_argument('--outputEncoding',  default='utf-8', help='set output encdoding')
 
+
     args = parser.parse_args()
+
+    if args.schoolExclusion:
+        # path to school exclusion has been specified, so go and parse
+        excluced_schools = parseSchoolExclusionList(reportPath=args.schoolExclusion)
 
     # parse report 08 as it is mandatory !
     parseReport08(reportPath=args.report8)
