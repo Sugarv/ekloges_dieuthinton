@@ -26,6 +26,9 @@ employee_school_exclusions = {}
 # school exclusions
 excluced_schools = list()
 
+# employee exclusions
+excluced_employees = dict()
+
 
 
 def filterAFM(rawAFM):
@@ -34,6 +37,22 @@ def filterAFM(rawAFM):
 def csv_unireader(f, encoding="utf-8"):
     for row in csv.reader(codecs.iterencode(codecs.iterdecode(f, encoding), "utf-8"), delimiter=';', quotechar='"'):
         yield [e.decode("utf-8") for e in row]
+
+def parseEmployeeExclusionList(reportPath):
+    """
+    Parses a CSV which in the first column contains the IDs of all employees that need to be excluded from
+    processing
+    :param reportPath:
+    :return: a list of schools ids to exclude
+    """
+    result = dict()
+    with open(reportPath, 'rb') as report_csvfile:
+        reader = csv_unireader(report_csvfile, encoding='iso8859-7')
+        for row in reader:
+            result[row[0]]=(row[1] if len(row)>1 and row[1] != u'' else u'Άγνωστος λόγος εξαίρεσεις')
+
+
+    return result
 
 def parseSchoolExclusionList(reportPath):
     """
@@ -75,7 +94,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
             
 	    # check if generally absent (in case of multiple assignments) and insert in report16_absents
 	    if row[24] in report16_absence_reasons:
-		report16_absents[filterAFM(row[12])] = row[24]
+		    report16_absents[filterAFM(row[12])] = row[24]
 
     return result
 
@@ -97,8 +116,6 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
             # check if the school id is excluded
             if row[6] in excluced_schools:
                 continue
-
-
 
             # get school object
 
@@ -158,7 +175,8 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
 
 def isExcluded(employeeAfm, schoolId):
     """
-    Determines if an employee is excluded from school unit id. The operation will
+    Determines if an employee is excluded from school unit id. If the schoolId is None, then
+    the operation will check the general exclusion list. The operation will
     return None if the employee is not excluded or a description if the employee
     should be excluded
     :param employeeAfm: The employee's AFM
@@ -167,12 +185,15 @@ def isExcluded(employeeAfm, schoolId):
     :type schoolId: str
     :return: None if the employee is not excluded or a description if the employee should be excluded
     """
+    if schoolId is None:
+        return excluced_employees.get(employeeAfm, None)
+
     if len(employee_school_exclusions) > 0:
         exclusion = employee_school_exclusions.get(employeeAfm, None)
         if exclusion:
             # employee is probably excluded
             if exclusion.get('schoolId', '') == schoolId:
-                return exclusion.get('reason', "Άγνωστο λόγος εξαιρέσεις")
+                return exclusion.get('reason', u"Άγνωστος λόγος εξαίρεσεις")
             else:
                 return None
         else:
@@ -191,8 +212,13 @@ def processSchool(id, filter0=False):
     schoolEmployees = schoolObj.get('employees', list()) if id not in excluced_schools else list()
     for employee in schoolEmployees:
 
-        # check if the employee is in the exclusion list
-        excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
+        # check if the employee is in the general exclusion list
+        excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=None)
+
+        # check if the employee is in the exclusion list (for the given school)
+        if excludedReason is None:
+            excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
+
         if excludedReason:
             # employee has been excluded
             rejectedList.append(
@@ -369,7 +395,7 @@ if __name__ == '__main__':
     parser.add_argument('-r8', "--report8", help="path to myschool report 8", required=True, type=str)
     parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
     parser.add_argument('-se', "--schoolExclusion", help="path to school exclusion list", type=str)
-
+    parser.add_argument('-ee', "--employeeExclusion", help="path to school exclusion list", type=str)
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
@@ -383,6 +409,9 @@ if __name__ == '__main__':
     if args.schoolExclusion:
         # path to school exclusion has been specified, so go and parse
         excluced_schools = parseSchoolExclusionList(reportPath=args.schoolExclusion)
+
+    if args.employeeExclusion:
+        excluced_employees = parseEmployeeExclusionList(reportPath=args.employeeExclusion)
 
     # parse report 08 as it is mandatory !
     parseReport08(reportPath=args.report8)
