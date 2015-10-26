@@ -49,7 +49,9 @@ def parseEmployeeExclusionList(reportPath):
     with open(reportPath, 'rb') as report_csvfile:
         reader = csv_unireader(report_csvfile, encoding='iso8859-7')
         for row in reader:
-            result[row[0]]=(row[1] if len(row)>1 and row[1] != u'' else u'Άγνωστος λόγος εξαίρεσεις')
+            afm = str(row[0])
+            afm = afm if len(afm)==9 else '0'+afm
+            result[afm]=(row[1] if len(row)>1 and row[1] != u'' else u'Άγνωστος λόγος εξαίρεσεις')
 
 
     return result
@@ -93,7 +95,7 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
             result[filterAFM(row[12])] = { "schoolId": row[6], "reason": "%s (%s)" % (row[22], row[23]) }
             
 	    # check if generally absent (in case of multiple assignments) and insert in report16_absents
-	    if row[24] in report16_absence_reasons:
+	    if row[24] in report16_absence_reasons or unicode(row[24]).startswith(u'ΜΑΚΡΟΧΡΟΝΙΑ ΑΔΕΙΑ (>10 ημέρες)'):
 		    report16_absents[filterAFM(row[12])] = row[24]
 
     return result
@@ -164,8 +166,8 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 'type': row[33],
                 'assigment': row[34],
                 'isMaster': True if row[35] == u'Ναι' else False,
-                'hours': int(row[39]) if row[39] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
-                'teachingHours': (int(row[41]) if row[41] else 0) + (int(row[42]) if row[42] else 0),
+                'hours': int(row[44]) if row[44] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
+                'teachingHours': (int(row[46]) if row[46] else 0) + (int(row[47]) if row[47] else 0),
             }
 
             employeeObj['assigments'].append(assigmentObj)
