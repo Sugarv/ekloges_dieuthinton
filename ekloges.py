@@ -23,6 +23,12 @@ report16_absents = {}
 
 employee_school_exclusions = {}
 
+# school exclusions
+excluced_schools = list()
+
+# employee exclusions
+excluced_employees = dict()
+
 
 
 def filterAFM(rawAFM):
@@ -31,6 +37,39 @@ def filterAFM(rawAFM):
 def csv_unireader(f, encoding="utf-8"):
     for row in csv.reader(codecs.iterencode(codecs.iterdecode(f, encoding), "utf-8"), delimiter=';', quotechar='"'):
         yield [e.decode("utf-8") for e in row]
+
+def parseEmployeeExclusionList(reportPath):
+    """
+    Parses a CSV which in the first column contains the IDs of all employees that need to be excluded from
+    processing
+    :param reportPath:
+    :return: a list of schools ids to exclude
+    """
+    result = dict()
+    with open(reportPath, 'rb') as report_csvfile:
+        reader = csv_unireader(report_csvfile, encoding='iso8859-7')
+        for row in reader:
+            afm = str(row[0])
+            afm = afm if len(afm)==9 else '0'+afm
+            result[afm]=(row[1] if len(row)>1 and row[1] != u'' else u'Άγνωστος λόγος εξαίρεσεις')
+
+
+    return result
+
+def parseSchoolExclusionList(reportPath):
+    """
+    Parses a CSV which in the first column contains the IDs of all schools that need to be excluded from
+    processing
+    :param reportPath:
+    :return: a list of schools ids to exclude
+    """
+    result = list()
+    with open(reportPath, 'rb') as report_csvfile:
+        reader = csv_unireader(report_csvfile, encoding='iso8859-7')
+        for row in reader:
+            result.append(row[0])
+
+    return result
 
 def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.csv'):
     """
@@ -56,8 +95,8 @@ def parseReport16(reportPath='/Users/slavikos/Downloads/CSV_2015-06-03-100905.cs
             result[filterAFM(row[12])] = { "schoolId": row[6], "reason": "%s (%s)" % (row[22], row[23]) }
             
 	    # check if generally absent (in case of multiple assignments) and insert in report16_absents
-	    if row[24] in report16_absence_reasons:
-		report16_absents[filterAFM(row[12])] = row[24]
+	    if row[24] in report16_absence_reasons or unicode(row[24]).startswith(u'ΜΑΚΡΟΧΡΟΝΙΑ ΑΔΕΙΑ (>10 ημέρες)'):
+		    report16_absents[filterAFM(row[12])] = row[24]
 
     return result
 
@@ -74,6 +113,10 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 continue
             #exclude some school types
             if row[4] in excluded_school_types:
+                continue
+
+            # check if the school id is excluded
+            if row[6] in excluced_schools:
                 continue
 
             # get school object
@@ -123,8 +166,8 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 'type': row[33],
                 'assigment': row[34],
                 'isMaster': True if row[35] == u'Ναι' else False,
-                'hours': int(row[39]) if row[39] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
-                'teachingHours': (int(row[41]) if row[41] else 0) + (int(row[42]) if row[42] else 0),
+                'hours': int(row[44]) if row[44] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
+                'teachingHours': (int(row[46]) if row[46] else 0) + (int(row[47]) if row[47] else 0),
             }
 
             employeeObj['assigments'].append(assigmentObj)
@@ -134,7 +177,8 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
 
 def isExcluded(employeeAfm, schoolId):
     """
-    Determines if an employee is excluded from school unit id. The operation will
+    Determines if an employee is excluded from school unit id. If the schoolId is None, then
+    the operation will check the general exclusion list. The operation will
     return None if the employee is not excluded or a description if the employee
     should be excluded
     :param employeeAfm: The employee's AFM
@@ -143,12 +187,15 @@ def isExcluded(employeeAfm, schoolId):
     :type schoolId: str
     :return: None if the employee is not excluded or a description if the employee should be excluded
     """
+    if schoolId is None:
+        return excluced_employees.get(employeeAfm, None)
+
     if len(employee_school_exclusions) > 0:
         exclusion = employee_school_exclusions.get(employeeAfm, None)
         if exclusion:
             # employee is probably excluded
             if exclusion.get('schoolId', '') == schoolId:
-                return exclusion.get('reason', "Άγνωστο λόγος εξαιρέσεις")
+                return exclusion.get('reason', u"Άγνωστος λόγος εξαίρεσεις")
             else:
                 return None
         else:
@@ -162,10 +209,18 @@ def processSchool(id, filter0=False):
     schoolObj = report08_schools.get(id, None)
     acceptedList = list()
     rejectedList = list()
-    for employee in schoolObj.get('employees', list()):
 
-        # check if the employee is in the exclusion list
-        excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
+    # fetch school employees, if school is not excluded
+    schoolEmployees = schoolObj.get('employees', list()) if id not in excluced_schools else list()
+    for employee in schoolEmployees:
+
+        # check if the employee is in the general exclusion list
+        excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=None)
+
+        # check if the employee is in the exclusion list (for the given school)
+        if excludedReason is None:
+            excludedReason = isExcluded(employeeAfm=employee['afm'], schoolId=schoolObj['id'])
+
         if excludedReason:
             # employee has been excluded
             rejectedList.append(
@@ -217,7 +272,7 @@ def processSchool(id, filter0=False):
             if assigment['hours'] > selectedAssigment['hours']:
                	# found an assigment with more hours, check the
                	# new assigment
-               	    selectedAssigment = assigment
+               	selectedAssigment = assigment
 
             elif assigment['hours'] == selectedAssigment['hours']:
                	# deal with same hour assignments
@@ -265,9 +320,9 @@ def processSchool(id, filter0=False):
         'rejected': sorted(rejectedList, key=lambda employee: employee['employee']['surname']),
     }
 
-def writeReportToFile(schoolId, resultStr, basePath='/tmp'):
-    filePath = os.path.join(basePath, ("%s.txt" % schoolId))
-    with codecs.open(filePath, mode="w", encoding="utf-8") as textFile:
+def writeReportToFile(reportName, resultStr, basePath='/tmp', encoding="utf-8"):
+    filePath = os.path.join(basePath, reportName)
+    with codecs.open(filePath, mode="w", encoding=encoding) as textFile:
         textFile.write(resultStr)
     return filePath
 
@@ -341,12 +396,24 @@ if __name__ == '__main__':
 
     parser.add_argument('-r8', "--report8", help="path to myschool report 8", required=True, type=str)
     parser.add_argument('-r16', "--report16", help="path to myschool report 16", type=str)
+    parser.add_argument('-se', "--schoolExclusion", help="path to school exclusion list", type=str)
+    parser.add_argument('-ee', "--employeeExclusion", help="path to school exclusion list", type=str)
     parser.add_argument('--schoolId', type=str, help='generate report for the given school id')
     parser.add_argument('--filter0', action='store_true', default=False, help='filter employees without teaching hour(s)')
     parser.add_argument('--rejected', action='store_true', default=False, help='print rejected employees in results')
     parser.add_argument('--outputDir', type=str, help='the base path where output files should be placed')
     parser.add_argument('--titleFiles', action='store_true', default=False, help='output school titles as filenames')
+    parser.add_argument('--outputEncoding',  default='utf-8', help='set output encdoding')
+
+
     args = parser.parse_args()
+
+    if args.schoolExclusion:
+        # path to school exclusion has been specified, so go and parse
+        excluced_schools = parseSchoolExclusionList(reportPath=args.schoolExclusion)
+
+    if args.employeeExclusion:
+        excluced_employees = parseEmployeeExclusionList(reportPath=args.employeeExclusion)
 
     # parse report 08 as it is mandatory !
     parseReport08(reportPath=args.report8)
@@ -360,10 +427,8 @@ if __name__ == '__main__':
         result = processSchool(id=args.schoolId, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            if args.titleFiles:
-                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
-            else:
-                path = writeReportToFile(schoolId=args.schoolId, resultStr=r, basePath=args.outputDir)
+            outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else args.schoolId
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir, encoding=args.outputEncoding)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (args.schoolId,schoolObj['title'], path)
         else:
             print r
@@ -374,10 +439,8 @@ if __name__ == '__main__':
         result = processSchool(id=school, filter0=args.filter0)
         r = printTabularResults(result, includeRejected=args.rejected)
         if args.outputDir:
-            if args.titleFiles:
-                path = writeReportToFile(schoolId=shortenTitle(schoolObj['title']), resultStr=r, basePath=args.outputDir)
-            else:
-                path = writeReportToFile(schoolId=school, resultStr=r, basePath=args.outputDir)
+            outputFileName = shortenTitle(schoolObj['title']) if args.titleFiles else school
+            path = writeReportToFile(reportName=("%s.txt" % outputFileName), resultStr=r, basePath=args.outputDir, encoding=args.outputEncoding)
             print "[*] School '%s' (%s) report has been written to file '%s'" % (school,schoolObj['title'], path)
         else:
             print r
