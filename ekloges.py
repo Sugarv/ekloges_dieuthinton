@@ -112,43 +112,43 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
                 firstRow = False
                 continue
             #exclude some school types
-            if row[4] in excluded_school_types:
+            if row[5] in excluded_school_types:
                 continue
 
             # check if the school id is excluded
-            if row[6] in excluced_schools:
+            if row[7] in excluced_schools:
                 continue
 
             # get school object
 
-            schoolObj = report08_schools.get(row[6], None)
+            schoolObj = report08_schools.get(row[7], None)
 
             if not schoolObj:
                 # first time we see that school
                 schoolObj = {
-                    'id': row[6],
-                    'title': row[7],
-                    'email': row[10],
+                    'id': row[7],
+                    'title': row[8],
+                    'email': row[11],
                     'employees': list()
                 }
                 # add school to dict
-                report08_schools[row[6]] = schoolObj
+                report08_schools[row[7]] = schoolObj
 
 
             # fetch employee from cache
-            employeeAfm = filterAFM(row[16])
+            employeeAfm = filterAFM(row[17])
 
             employeeObj = report08_employees.get(employeeAfm, None)
 
             if not employeeObj:
                 # first time we see that employee
                 employeeObj = {
-                    'id': row[15] if row[15] else '',
+                    'id': row[16] if row[16] else '',
                     'afm': employeeAfm,
-                    'name': row[19],
-                    'surname': row[18],
-                    'fatherName': row[20],
-                    'specialization': row[28],
+                    'name': row[20],
+                    'surname': row[19],
+                    'fatherName': row[21],
+                    'specialization': row[29],
                     'assigments': list()
                 }
                 # add the employee in the dict
@@ -163,11 +163,11 @@ def parseReport08(reportPath='/Users/slavikos/Downloads/CSV_2015-06-02-130003.cs
 
             assigmentObj = {
                 'schoolId': schoolObj['id'],
-                'type': row[33],
-                'assigment': row[34],
-                'isMaster': True if row[35] == u'Ναι' else False,
-                'hours': int(row[44]) if row[44] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
-                'teachingHours': (int(row[46]) if row[46] else 0) + (int(row[47]) if row[47] else 0),
+                'type': row[34],
+                'assigment': row[35],
+                'isMaster': True if row[36] == u'Ναι' else False,
+                'hours': int(row[45]) if row[45] else 0, # Ώρες Υποχ. Διδακτικού Ωραρίου Υπηρέτησης στο Φορέα
+                'teachingHours': (int(row[47]) if row[47] else 0) + (int(row[48]) if row[48] else 0),
             }
 
             employeeObj['assigments'].append(assigmentObj)
